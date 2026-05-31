@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Users, Package, ShoppingBag, TrendingUp, LayoutDashboard, Tag, Store } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getAllOrders, updateOrderStatus } from '../../api/orders.api';
+import { getProducts } from '../../api/products.api';
+import { getAdminUserStats } from '../../api/users.api';
 import Badge from '../../components/ui/Badge';
 import Spinner from '../../components/ui/Spinner';
 import toast from 'react-hot-toast';
@@ -44,7 +46,7 @@ function getStatusVariant(status: string): 'default' | 'success' | 'warning' | '
 
 const SIDEBAR_LINKS = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={16} /> },
-  { to: '/orders/my', label: 'Orders', icon: <ShoppingBag size={16} /> },
+  { to: '/admin/dashboard', label: 'Orders', icon: <ShoppingBag size={16} /> },
   { to: '/admin/sellers', label: 'Sellers', icon: <Store size={16} /> },
   { to: '/admin/coupons', label: 'Coupons', icon: <Tag size={16} /> },
 ];
@@ -58,6 +60,16 @@ export default function AdminDashboardPage() {
     queryFn: () => getAllOrders(page, 20),
   });
 
+  const { data: userStats, isLoading: usersLoading } = useQuery({
+    queryKey: ['admin-user-stats'],
+    queryFn: getAdminUserStats,
+  });
+
+  const { data: productsData, isLoading: productsLoading } = useQuery({
+    queryKey: ['admin-products-total'],
+    queryFn: () => getProducts({ page: 1, limit: 1 }),
+  });
+
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) => updateOrderStatus(id, status),
     onSuccess: () => {
@@ -68,6 +80,8 @@ export default function AdminDashboardPage() {
   });
 
   const orders = data?.orders || data?.data || (Array.isArray(data) ? data : []);
+  const totalOrders = data?.total ?? orders.length;
+  const totalProducts = productsData?.total ?? productsData?.data?.length ?? 0;
   const totalRevenue = orders.reduce((sum: number, o: { totalAmount?: number }) => sum + (o.totalAmount || 0), 0);
 
   return (
@@ -99,20 +113,20 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard
           label="Total Users"
-          value="—"
+          value={usersLoading ? '...' : userStats?.totalUsers ?? 0}
           icon={<Users size={18} className="text-blue-600" />}
           color="bg-blue-100"
-          change="Coming soon"
+          change={`${userStats?.customers ?? 0} customers`}
         />
         <StatCard
           label="Total Products"
-          value="—"
+          value={productsLoading ? '...' : totalProducts}
           icon={<Package size={18} className="text-green-600" />}
           color="bg-green-100"
         />
         <StatCard
           label="Total Orders"
-          value={isLoading ? '...' : orders.length}
+          value={isLoading ? '...' : totalOrders}
           icon={<ShoppingBag size={18} className="text-purple-600" />}
           color="bg-purple-100"
         />
@@ -148,7 +162,7 @@ export default function AdminDashboardPage() {
             <span className="text-sm font-medium text-gray-700">Coupons</span>
           </Link>
           <Link
-            to="/orders/my"
+            to="/admin/dashboard"
             className="flex items-center gap-3 bg-white rounded-lg p-4 border border-gray-100 hover:border-pink-300 hover:shadow-sm transition-all"
           >
             <div className="w-9 h-9 bg-pink-100 rounded-full flex items-center justify-center">

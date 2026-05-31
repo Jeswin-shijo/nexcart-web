@@ -1,7 +1,13 @@
 import apiClient from './client';
 
 export const registerSeller = (data: any) =>
-  apiClient.post('/sellers/register', data).then((r) => r.data);
+  apiClient.post('/sellers/register', {
+    brandId: data.brandId,
+    gstNumber: data.gstNumber,
+    accountNumber: data.accountNumber ?? data.bankAccountNumber,
+    ifsc: data.ifsc ?? data.ifscCode,
+    bankName: data.bankName,
+  }).then((r) => r.data);
 
 export const getSellerProfile = () =>
   apiClient.get('/sellers/me').then((r) => r.data);

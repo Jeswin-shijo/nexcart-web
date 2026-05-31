@@ -1,4 +1,5 @@
 import { Toaster } from 'react-hot-toast';
+import { useLocation } from 'react-router-dom';
 import Navbar from './Navbar';
 import Footer from './Footer';
 
@@ -7,6 +8,9 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
+  const location = useLocation();
+  const isAuthPage = location.pathname === '/auth';
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-dark-bg">
       <Toaster
@@ -25,11 +29,11 @@ export default function Layout({ children }: LayoutProps) {
           },
         }}
       />
-      <Navbar />
+      {!isAuthPage && <Navbar />}
       <main className="flex-1">
         {children}
       </main>
-      <Footer />
+      {!isAuthPage && <Footer />}
     </div>
   );
 }

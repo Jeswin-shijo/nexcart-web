@@ -142,7 +142,7 @@ export default function OrderDetailPage() {
                       {item.product?.brandId?.name && (
                         <p className="text-xs text-gray-500 dark:text-dark-muted uppercase font-medium">{item.product.brandId.name}</p>
                       )}
-                      <p className="text-sm text-gray-800 dark:text-dark-text font-medium">{item.product?.title || 'Product'}</p>
+                      <p className="text-sm text-gray-800 dark:text-dark-text font-medium">{item.product?.title || (item as any).productTitle || (item as any).title || 'Product'}</p>
                       <div className="flex gap-3 text-xs text-gray-500 dark:text-dark-muted mt-1">
                         {item.size && <span>Size: {item.size}</span>}
                         {item.color && <span>Color: {item.color}</span>}
@@ -181,7 +181,7 @@ export default function OrderDetailPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-gray-600 dark:text-dark-muted">
                   <span>Method</span>
-                  <span className="uppercase font-medium text-gray-800 dark:text-dark-text">{order.paymentMethod}</span>
+                  <span className="uppercase font-medium text-gray-800 dark:text-dark-text">{order.paymentMethod || 'cod'}</span>
                 </div>
                 <div className="flex justify-between text-gray-600 dark:text-dark-muted">
                   <span>Subtotal</span>
@@ -189,8 +189,16 @@ export default function OrderDetailPage() {
                 </div>
                 <div className="flex justify-between text-gray-600 dark:text-dark-muted">
                   <span>Delivery</span>
-                  <span className="text-green-600">FREE</span>
+                  <span className={order.deliveryFee ? '' : 'text-green-600'}>
+                    {order.deliveryFee ? `₹${order.deliveryFee.toLocaleString()}` : 'FREE'}
+                  </span>
                 </div>
+                {!!order.discount && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount</span>
+                    <span>-₹{order.discount.toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-bold text-gray-900 dark:text-dark-text border-t border-gray-100 dark:border-dark-border pt-2">
                   <span>Total</span>
                   <span>₹{order.totalAmount?.toLocaleString()}</span>

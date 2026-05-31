@@ -64,7 +64,7 @@ export default function ProductsPage() {
   });
 
   const products = productsData?.products || productsData?.data || (Array.isArray(productsData) ? productsData : []);
-  const totalPages = productsData?.totalPages || 1;
+  const totalPages = productsData?.totalPages || Math.max(1, Math.ceil((productsData?.total || products.length) / 20));
   const categories = categoriesData?.categories || categoriesData?.data || (Array.isArray(categoriesData) ? categoriesData : []);
   const brands = brandsData?.brands || brandsData?.data || (Array.isArray(brandsData) ? brandsData : []);
 

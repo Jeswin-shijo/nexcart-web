@@ -14,7 +14,8 @@ export interface Product {
   discountedPrice: number;
   basePrice: number;
   ratings?: {
-    average: number;
+    average?: number;
+    avg?: number;
     count: number;
   };
 }
@@ -35,6 +36,7 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
     product.basePrice > product.discountedPrice
       ? Math.round(((product.basePrice - product.discountedPrice) / product.basePrice) * 100)
       : 0;
+  const ratingAverage = product.ratings?.average ?? product.ratings?.avg;
 
   async function handleWishlist(e: React.MouseEvent) {
     e.stopPropagation();
@@ -136,10 +138,10 @@ export default function ProductCard({ product, isWishlisted = false, onWishlistT
         </div>
 
         {/* Ratings */}
-        {product.ratings && product.ratings.count > 0 && (
+        {product.ratings && product.ratings.count > 0 && ratingAverage !== undefined && (
           <div className="flex items-center gap-1 mt-1.5">
             <div className="flex items-center gap-0.5 bg-green-600 text-white text-xs px-1.5 py-0.5 rounded">
-              <span>{product.ratings.average.toFixed(1)}</span>
+              <span>{ratingAverage.toFixed(1)}</span>
               <Star size={10} className="fill-white" />
             </div>
             <span className="text-xs text-gray-400 dark:text-dark-muted">({product.ratings.count})</span>

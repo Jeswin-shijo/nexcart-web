@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,10 +6,34 @@ import { z } from 'zod';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/auth.store';
-import { login, register } from '../api/auth.api';
+import { googleLogin, login, register } from '../api/auth.api';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import PageTransition from '../components/motion/PageTransition';
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (options: {
+            client_id: string;
+            callback: (response: { credential?: string }) => void;
+          }) => void;
+          renderButton: (
+            parent: HTMLElement,
+            options: {
+              theme: 'outline' | 'filled_blue' | 'filled_black';
+              size: 'large' | 'medium' | 'small';
+              width?: number;
+              text?: 'signin_with' | 'signup_with' | 'continue_with';
+            },
+          ) => void;
+        };
+      };
+    };
+  }
+}
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -118,7 +142,7 @@ export default function AuthPage() {
 }
 
 interface FormProps {
-  setAuth: (user: { id: string; name: string; email: string; role: string }, token: string) => void;
+  setAuth: (user: { id: string; name: string; email: string; role: string; avatar?: string }, token: string) => void;
   navigate: ReturnType<typeof useNavigate>;
 }
 
@@ -164,6 +188,10 @@ function LoginForm({ setAuth, navigate }: FormProps) {
       <Button type="submit" size="lg" disabled={isSubmitting} className="w-full">
         {isSubmitting ? 'Signing in...' : 'Login'}
       </Button>
+      <AuthDivider />
+      <div className="flex justify-center">
+        <GoogleAuthButton setAuth={setAuth} navigate={navigate} text="signin_with" />
+      </div>
     </form>
   );
 }
@@ -228,6 +256,92 @@ function RegisterForm({ setAuth, navigate }: RegisterFormProps) {
       <Button type="submit" size="lg" disabled={isSubmitting} className="w-full mt-1">
         {isSubmitting ? 'Creating account...' : 'Create Account'}
       </Button>
+      <AuthDivider />
+      <div className="flex justify-center">
+        <GoogleAuthButton setAuth={setAuth} navigate={navigate} text="signup_with" />
+      </div>
     </form>
   );
+}
+
+function AuthDivider() {
+  return (
+    <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-gray-400 dark:text-dark-muted">
+      <span className="h-px flex-1 bg-gray-200 dark:bg-dark-border" />
+      <span>or</span>
+      <span className="h-px flex-1 bg-gray-200 dark:bg-dark-border" />
+    </div>
+  );
+}
+
+interface GoogleAuthButtonProps extends FormProps {
+  text: 'signin_with' | 'signup_with';
+}
+
+function GoogleAuthButton({ setAuth, navigate, text }: GoogleAuthButtonProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isReady, setIsReady] = useState(false);
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+
+  useEffect(() => {
+    if (!clientId) return;
+    if (window.google) {
+      setIsReady(true);
+      return;
+    }
+
+    const scriptId = 'google-identity-services';
+    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
+    if (!script) {
+      script = document.createElement('script');
+      script.id = scriptId;
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+    script.addEventListener('load', () => setIsReady(true), { once: true });
+  }, [clientId]);
+
+  useEffect(() => {
+    if (!clientId || !isReady || !window.google || !containerRef.current) return;
+
+    containerRef.current.innerHTML = '';
+    window.google.accounts.id.initialize({
+      client_id: clientId,
+      callback: async ({ credential }) => {
+        if (!credential) {
+          toast.error('Google sign-in failed');
+          return;
+        }
+        try {
+          const res = await googleLogin(credential);
+          setAuth(res.user, res.accessToken);
+          toast.success('Welcome to Nexcart!');
+          navigate(res.redirectTo || '/');
+        } catch (err: unknown) {
+          const message =
+            (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+            'Google sign-in failed';
+          toast.error(message);
+        }
+      },
+    });
+    window.google.accounts.id.renderButton(containerRef.current, {
+      theme: 'outline',
+      size: 'large',
+      width: 384,
+      text,
+    });
+  }, [clientId, isReady, navigate, setAuth, text]);
+
+  if (!clientId) {
+    return (
+      <Button type="button" variant="outline" size="lg" disabled className="w-full max-w-sm">
+        Continue with Google
+      </Button>
+    );
+  }
+
+  return <div ref={containerRef} className="min-h-[44px] w-full max-w-sm overflow-hidden rounded" />;
 }

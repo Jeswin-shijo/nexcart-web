@@ -19,6 +19,7 @@ export interface AuthResponse {
     name: string;
     email: string;
     role: string;
+    avatar?: string;
   };
   redirectTo: string;
 }
@@ -30,6 +31,11 @@ export async function register(data: RegisterData): Promise<AuthResponse> {
 
 export async function login(data: LoginData): Promise<AuthResponse> {
   const response = await apiClient.post('/auth/login', data);
+  return response.data;
+}
+
+export async function googleLogin(idToken: string): Promise<AuthResponse> {
+  const response = await apiClient.post('/auth/google', { idToken });
   return response.data;
 }
 

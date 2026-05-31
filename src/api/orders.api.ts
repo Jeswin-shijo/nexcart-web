@@ -2,12 +2,16 @@ import apiClient from './client';
 
 export interface PlaceOrderData {
   addressId: string;
-  paymentMethod: string;
+  paymentMethod?: string;
+  method?: string;
   couponCode?: string;
 }
 
 export async function placeOrder(data: PlaceOrderData) {
-  const response = await apiClient.post('/orders', data);
+  const response = await apiClient.post('/orders', {
+    ...data,
+    method: data.method || data.paymentMethod,
+  });
   return response.data;
 }
 

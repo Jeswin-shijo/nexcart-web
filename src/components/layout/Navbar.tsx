@@ -7,11 +7,12 @@ import { useAuthStore } from '../../store/auth.store';
 import { useCartStore } from '../../store/cart.store';
 import { useThemeStore } from '../../store/theme.store';
 import { getUnreadCount } from '../../api/notifications.api';
+import { getCart } from '../../api/cart.api';
 
 export default function Navbar() {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuthStore();
-  const { itemCount } = useCartStore();
+  const { itemCount, setCart, clearCartStore } = useCartStore();
   const { theme, toggleTheme } = useThemeStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [profileOpen, setProfileOpen] = useState(false);
@@ -26,6 +27,20 @@ export default function Navbar() {
     refetchInterval: 60000,
   });
   const unreadCount: number = unreadData?.count ?? 0;
+
+  const { data: cartData } = useQuery({
+    queryKey: ['cart'],
+    queryFn: getCart,
+    enabled: isAuthenticated,
+  });
+
+  useEffect(() => {
+    if (cartData) {
+      setCart(cartData?.cart || cartData);
+    } else if (!isAuthenticated) {
+      clearCartStore();
+    }
+  }, [cartData, clearCartStore, isAuthenticated, setCart]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -228,6 +243,15 @@ export default function Navbar() {
                             Seller Dashboard
                           </Link>
                         )}
+                        {user?.role === 'customer' && (
+                          <Link
+                            to="/seller/register"
+                            onClick={() => setProfileOpen(false)}
+                            className="block px-4 py-2 text-sm text-gray-700 dark:text-dark-text hover:bg-gray-50 dark:hover:bg-dark-bg"
+                          >
+                            Become a Seller
+                          </Link>
+                        )}
                         {user?.role === 'admin' && (
                           <Link
                             to="/admin/dashboard"
@@ -353,6 +377,11 @@ export default function Navbar() {
                   <Link to="/profile" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 text-gray-700 dark:text-dark-text py-1">
                     My Profile
                   </Link>
+                  {user?.role === 'customer' && (
+                    <Link to="/seller/register" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 text-gray-700 dark:text-dark-text py-1">
+                      Become a Seller
+                    </Link>
+                  )}
                   <button onClick={handleLogout} className="flex items-center gap-2 text-red-600 py-1 text-left">
                     Logout
                   </button>

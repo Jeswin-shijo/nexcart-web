@@ -5,6 +5,7 @@ import { Check, Plus, MapPin } from 'lucide-react';
 import { getAddresses, createAddress } from '../api/users.api';
 import { getCart } from '../api/cart.api';
 import { placeOrder } from '../api/orders.api';
+import { validateCoupon } from '../api/coupons.api';
 import { useCartStore } from '../store/cart.store';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -36,7 +37,7 @@ export default function CheckoutPage() {
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [coupon, setCoupon] = useState('');
-  const [couponApplied, setCouponApplied] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [successModal, setSuccessModal] = useState(false);
   const [newAddress, setNewAddress] = useState({
@@ -58,7 +59,7 @@ export default function CheckoutPage() {
   const cartItems = cart?.items || [];
   const subtotal = cartItems.reduce((sum: number, item: { price: number; qty: number }) => sum + item.price * item.qty, 0);
   const deliveryFee = subtotal >= 499 ? 0 : 49;
-  const discount = couponApplied ? Math.round(subtotal * 0.1) : 0;
+  const discount = appliedCoupon?.discount ?? 0;
   const total = subtotal + deliveryFee - discount;
 
   const createAddressMutation = useMutation({
@@ -81,6 +82,26 @@ export default function CheckoutPage() {
     onError: () => toast.error('Failed to place order. Please try again.'),
   });
 
+  const couponMutation = useMutation({
+    mutationFn: () => validateCoupon(coupon.trim(), subtotal),
+    onSuccess: (result) => {
+      if (!result?.valid) {
+        setAppliedCoupon(null);
+        toast.error(result?.message || 'Invalid coupon code');
+        return;
+      }
+      setAppliedCoupon({
+        code: coupon.trim().toUpperCase(),
+        discount: Math.round(result.discount || 0),
+      });
+      toast.success('Coupon applied');
+    },
+    onError: () => {
+      setAppliedCoupon(null);
+      toast.error('Failed to validate coupon');
+    },
+  });
+
   function handleAddAddress() {
     if (!newAddress.fullName || !newAddress.phone || !newAddress.street || !newAddress.city || !newAddress.state || !newAddress.pincode) {
       toast.error('Please fill all address fields');
@@ -97,17 +118,21 @@ export default function CheckoutPage() {
     placeOrderMutation.mutate({
       addressId: selectedAddress,
       paymentMethod,
-      couponCode: couponApplied ? coupon : undefined,
+      couponCode: appliedCoupon?.code,
     });
   }
 
   function applyCoupon() {
-    if (coupon.trim().toUpperCase() === 'NEXCART10') {
-      setCouponApplied(true);
-      toast.success('Coupon applied! 10% discount');
-    } else {
-      toast.error('Invalid coupon code');
+    if (!coupon.trim()) {
+      toast.error('Enter a coupon code');
+      return;
     }
+    couponMutation.mutate();
+  }
+
+  function removeCoupon() {
+    setAppliedCoupon(null);
+    setCoupon('');
   }
 
   if (successModal) {
@@ -258,19 +283,24 @@ export default function CheckoutPage() {
                       type="text"
                       value={coupon}
                       onChange={(e) => setCoupon(e.target.value)}
-                      placeholder="Enter coupon code (try NEXCART10)"
-                      disabled={couponApplied}
+                      placeholder="Enter coupon code"
+                      disabled={!!appliedCoupon || couponMutation.isPending}
                       className="flex-1 px-3 py-2 border border-gray-300 dark:border-dark-border rounded text-sm bg-white dark:bg-dark-surface text-gray-900 dark:text-dark-text placeholder:text-gray-400 dark:placeholder:text-dark-muted focus:outline-none focus:border-primary"
                     />
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={couponApplied ? () => { setCouponApplied(false); setCoupon(''); } : applyCoupon}
+                      onClick={appliedCoupon ? removeCoupon : applyCoupon}
+                      disabled={couponMutation.isPending || (!appliedCoupon && subtotal <= 0)}
                     >
-                      {couponApplied ? 'Remove' : 'Apply'}
+                      {appliedCoupon ? 'Remove' : couponMutation.isPending ? 'Checking...' : 'Apply'}
                     </Button>
                   </div>
-                  {couponApplied && <p className="text-xs text-green-600 mt-1">✓ NEXCART10 applied — 10% off</p>}
+                  {appliedCoupon && (
+                    <p className="text-xs text-green-600 mt-1">
+                      {appliedCoupon.code} applied — ₹{appliedCoupon.discount.toLocaleString()} off
+                    </p>
+                  )}
                 </div>
 
                 <Button
@@ -321,9 +351,9 @@ export default function CheckoutPage() {
                     <span>₹{deliveryFee}</span>
                   )}
                 </div>
-                {couponApplied && (
+                {appliedCoupon && (
                   <div className="flex justify-between text-green-600">
-                    <span>Discount (10%)</span>
+                    <span>Discount</span>
                     <span>-₹{discount.toLocaleString()}</span>
                   </div>
                 )}

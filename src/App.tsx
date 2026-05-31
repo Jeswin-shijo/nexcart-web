@@ -141,7 +141,7 @@ function AnimatedRoutes() {
         <Route
           path="/seller/register"
           element={
-            <RoleRoute allowedRoles={['seller']}>
+            <RoleRoute allowedRoles={['customer', 'seller', 'admin']}>
               <SellerRegisterPage />
             </RoleRoute>
           }

@@ -42,7 +42,7 @@ export default function SellerRegisterPage() {
     mutationFn: registerSeller,
     onSuccess: () => {
       toast.success('Seller profile created! Awaiting approval.');
-      navigate('/seller/dashboard');
+      navigate('/profile');
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Registration failed. Please try again.');
